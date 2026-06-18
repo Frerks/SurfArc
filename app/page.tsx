@@ -1,14 +1,102 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
+
+const CONTRACT_ADDRESS = '0xdbe14257a79354474Ce0e4067ddaDB772130F365'
+const ARC_RPC = 'https://rpc.testnet.arc.network'
+const ARCSCAN = 'https://testnet.arcscan.app'
+const ARC_CHAIN_ID = 5042002
+
+const MINI_ABI = [
+  "function totalReports() external view returns (uint256)",
+  "function totalPaid() external view returns (uint256)",
+  "function getReport(string spotId) external view returns (tuple(address reporter, string spotId, string dataHash, uint8 waveHeight, uint8 windKnots, uint8 swellPeriod, uint32 timestamp, uint32 score))",
+  "function isReportFresh(string spotId) external view returns (bool)",
+  "function buyReport(string spotId) external",
+]
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false)
+  const [wallet, setWallet] = useState('')
+  const [spotId, setSpotId] = useState('pipeline-oahu')
+  const [report, setReport] = useState<{reporter:string,waveHeight:number,windKnots:number,swellPeriod:number,score:number,timestamp:number,fresh:boolean}|null>(null)
+  const [onChainStats, setOnChainStats] = useState<{totalReports:string,totalPaid:string}>({totalReports:'—',totalPaid:'—'})
+  const [appStatus, setAppStatus] = useState<'idle'|'connecting'|'fetching'|'buying'|'error'>('idle')
+  const [appLog, setAppLog] = useState('')
+
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', h)
+    // Load on-chain stats on mount
+    const loadStats = async () => {
+      try {
+        const provider = new JsonRpcProvider(ARC_RPC)
+        const contract = new Contract(CONTRACT_ADDRESS, MINI_ABI, provider)
+        const [tr, tp] = await Promise.all([contract.totalReports(), contract.totalPaid()])
+        setOnChainStats({
+          totalReports: tr.toString(),
+          totalPaid: '$' + (Number(tp) / 1e6).toFixed(3)
+        })
+      } catch {}
+    }
+    loadStats()
     return () => window.removeEventListener('scroll', h)
   }, [])
+
+  const connectWallet = async () => {
+    setAppStatus('connecting')
+    setAppLog('Requesting wallet...')
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eth = (window as any).ethereum
+      if (!eth) { setAppLog('No wallet found. Install Rabby or MetaMask.'); setAppStatus('error'); return }
+      const accounts = await eth.request({ method: 'eth_requestAccounts' }) as string[]
+      setWallet(accounts[0])
+      try {
+        await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + ARC_CHAIN_ID.toString(16) }] })
+      } catch {
+        await eth.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + ARC_CHAIN_ID.toString(16), chainName: 'Arc Testnet', nativeCurrency: { name:'ARC',symbol:'ARC',decimals:18 }, rpcUrls:[ARC_RPC], blockExplorerUrls:[ARCSCAN] }] })
+      }
+      setAppLog('Connected: ' + accounts[0].slice(0,6) + '...' + accounts[0].slice(-4))
+      setAppStatus('idle')
+    } catch(e: unknown) { setAppLog('Error: ' + (e instanceof Error ? e.message : String(e))); setAppStatus('error') }
+  }
+
+  const fetchReport = async () => {
+    setAppStatus('fetching')
+    setAppLog('Reading from chain...')
+    try {
+      const provider = new JsonRpcProvider(ARC_RPC)
+      const contract = new Contract(CONTRACT_ADDRESS, MINI_ABI, provider)
+      const [r, fresh] = await Promise.all([contract.getReport(spotId), contract.isReportFresh(spotId)])
+      if (r.reporter === '0x0000000000000000000000000000000000000000') {
+        setAppLog('No report found for this spot yet.')
+        setReport(null)
+      } else {
+        setReport({ reporter: r.reporter, waveHeight: Number(r.waveHeight), windKnots: Number(r.windKnots), swellPeriod: Number(r.swellPeriod), score: Number(r.score), timestamp: Number(r.timestamp), fresh })
+        setAppLog('')
+      }
+      setAppStatus('idle')
+    } catch(e: unknown) { setAppLog('Error: ' + (e instanceof Error ? e.message : String(e))); setAppStatus('error') }
+  }
+
+  const buyReport = async () => {
+    if (!wallet) { setAppLog('Connect wallet first.'); return }
+    setAppStatus('buying')
+    setAppLog('Sending $0.05 USDC...')
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const provider = new BrowserProvider((window as any).ethereum)
+      const signer = await provider.getSigner()
+      const contract = new Contract(CONTRACT_ADDRESS, MINI_ABI, signer)
+      const tx = await contract.buyReport(spotId)
+      setAppLog('Tx sent: ' + tx.hash.slice(0,10) + '...')
+      await tx.wait()
+      setAppLog('Paid! Fetching report...')
+      await fetchReport()
+    } catch(e: unknown) { setAppLog('Error: ' + (e instanceof Error ? e.message : String(e))); setAppStatus('error') }
+  }
 
   const navStyle: React.CSSProperties = {
     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
@@ -162,6 +250,104 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* APP — GET REPORT */}
+      <section style={{ padding: '100px 24px', borderTop: '1px solid #1e1e1e', background: '#0d0d0d' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <div style={{ marginBottom: 48 }}>
+            <span style={{ fontSize: 11, color: '#00ff88', letterSpacing: '0.15em', fontFamily: 'JetBrains Mono, monospace' }}>&#9672; LIVE APP</span>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, marginTop: 12, letterSpacing: '-0.02em' }}>Get a Spot Report</h2>
+          </div>
+
+          {/* On-chain stats */}
+          <div style={{ display: 'flex', gap: 1, background: '#1e1e1e', marginBottom: 32 }}>
+            {[['TOTAL REPORTS', onChainStats.totalReports],['USDC PAID OUT', onChainStats.totalPaid],['CONTRACT', CONTRACT_ADDRESS.slice(0,10)+'...'],['CHAIN ID','5042002']].map(([k,v]) => (
+              <div key={k} style={{ background: '#0d0d0d', padding: '20px 24px', flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: '#444', letterSpacing: '0.12em', marginBottom: 6, fontFamily: 'JetBrains Mono, monospace' }}>{k}</div>
+                <div style={{ fontSize: 14, color: '#00ff88', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ border: '1px solid #1e1e1e', padding: '32px', background: '#0a0a0a' }}>
+            {/* Step 1 */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: '#00ff88', letterSpacing: '0.1em', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace' }}>STEP 1 — CONNECT WALLET</div>
+              {wallet ? (
+                <div style={{ fontSize: 13, color: '#00ff88', fontFamily: 'JetBrains Mono, monospace' }}>&#10003; {wallet.slice(0,8)}...{wallet.slice(-6)}</div>
+              ) : (
+                <button onClick={connectWallet} disabled={appStatus==='connecting'}
+                  style={{ background: appStatus==='connecting'?'#1a1a1a':'#00ff88', color: appStatus==='connecting'?'#444':'#000', border:'none', padding:'12px 24px', cursor:'pointer', fontSize:13, fontWeight:700, letterSpacing:'0.08em', fontFamily:'JetBrains Mono, monospace' }}>
+                  {appStatus==='connecting'?'CONNECTING...':'CONNECT WALLET'}
+                </button>
+              )}
+            </div>
+
+            {/* Step 2 */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: '#00ff88', letterSpacing: '0.1em', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace' }}>STEP 2 — CHOOSE SPOT</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {['pipeline-oahu','j-bay-sa','uluwatu-bali','nazare-portugal','mundaka-spain'].map(s => (
+                  <button key={s} onClick={() => setSpotId(s)}
+                    style={{ background: spotId===s?'#00ff88':'transparent', color: spotId===s?'#000':'#444', border:'1px solid '+(spotId===s?'#00ff88':'#2a2a2a'), padding:'6px 14px', cursor:'pointer', fontSize:11, fontFamily:'JetBrains Mono, monospace', letterSpacing:'0.05em' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, color: '#00ff88', letterSpacing: '0.1em', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace' }}>STEP 3 — GET REPORT</div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <button onClick={fetchReport} disabled={appStatus==='fetching'}
+                  style={{ border:'1px solid #1e1e1e', background:'transparent', color:'#f5f5f5', padding:'12px 24px', cursor:'pointer', fontSize:13, fontFamily:'JetBrains Mono, monospace' }}>
+                  {appStatus==='fetching'?'READING...':'READ FREE (no pay)'}
+                </button>
+                <button onClick={buyReport} disabled={!wallet||appStatus==='buying'}
+                  style={{ background: (!wallet||appStatus==='buying')?'#1a1a1a':'#00ff88', color: (!wallet||appStatus==='buying')?'#444':'#000', border:'none', padding:'12px 24px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'JetBrains Mono, monospace' }}>
+                  {appStatus==='buying'?'SENDING...':'PAY $0.05 USDC'}
+                </button>
+              </div>
+            </div>
+
+            {/* Log */}
+            {appLog && (
+              <div style={{ padding:'12px 16px', background:'#050505', border:'1px solid #111', marginBottom: 16 }}>
+                <span style={{ fontSize:12, color: appLog.includes('Error')?'#ff4444':'#888', fontFamily:'JetBrains Mono, monospace' }}>{appLog}</span>
+              </div>
+            )}
+
+            {/* Report output */}
+            {report && (
+              <div style={{ border:'1px solid #00ff88', padding:'24px', background:'rgba(0,255,136,0.03)' }}>
+                <div style={{ fontSize:11, color:'#00ff88', letterSpacing:'0.1em', marginBottom:16, fontFamily:'JetBrains Mono, monospace' }}>&#9672; SPOT REPORT — {spotId.toUpperCase()}{report.fresh?' [FRESH]':' [EXPIRED]'}</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:16 }}>
+                  {[
+                    ['Wave Height', (report.waveHeight/10).toFixed(1) + ' m'],
+                    ['Wind', report.windKnots + ' kn'],
+                    ['Swell Period', report.swellPeriod + ' s'],
+                    ['Validator Score', report.score + '/100'],
+                    ['Reporter', report.reporter.slice(0,8)+'...'],
+                    ['Updated', new Date(report.timestamp*1000).toLocaleTimeString()],
+                  ].map(([k,v]) => (
+                    <div key={k}>
+                      <div style={{ fontSize:10, color:'#444', letterSpacing:'0.1em', marginBottom:4, fontFamily:'JetBrains Mono, monospace' }}>{k}</div>
+                      <div style={{ fontSize:14, color:'#f5f5f5', fontFamily:'JetBrains Mono, monospace' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:16 }}>
+                  <a href={`${ARCSCAN}/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize:11, color:'#444', fontFamily:'JetBrains Mono, monospace', textDecoration:'none' }}>
+                    View contract on ArcScan &#8599;
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
