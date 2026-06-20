@@ -109,86 +109,6 @@ export default function Home() {
 
   return (
     <main style={{ background: '#0a0a0a', color: '#f5f5f5', minHeight: '100vh' }}>
-
-      {/* STICKY APP BAR */}
-      <div style={{
-        position: 'fixed', top: 56, left: 0, right: 0, zIndex: 90,
-        background: '#0a0a0a', borderBottom: '1px solid #1e1e1e',
-        padding: '10px 24px',
-      }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {/* Wallet */}
-          {wallet ? (
-            <div style={{ fontSize: 12, color: '#00ff88', fontFamily: 'JetBrains Mono, monospace', padding: '8px 14px', border: '1px solid #00ff88' }}>
-              &#10003; {wallet.slice(0,6)}...{wallet.slice(-4)}
-            </div>
-          ) : (
-            <button onClick={connectWallet} disabled={appStatus==='connecting'}
-              style={{ background: appStatus==='connecting'?'#1a1a1a':'#00ff88', color: appStatus==='connecting'?'#444':'#000', border:'none', padding:'8px 16px', cursor:'pointer', fontSize:12, fontWeight:700, letterSpacing:'0.08em', fontFamily:'JetBrains Mono, monospace', whiteSpace:'nowrap' }}>
-              {appStatus==='connecting'?'...':'CONNECT WALLET'}
-            </button>
-          )}
-
-          {/* Divider */}
-          <span style={{ color: '#2a2a2a', fontSize: 16 }}>|</span>
-
-          {/* Spot selector inline */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['pipeline-oahu','j-bay-sa','uluwatu-bali','nazare-portugal','mundaka-spain'].map(s => (
-              <button key={s} onClick={() => setSpotId(s)}
-                style={{ background: spotId===s?'#00ff88':'transparent', color: spotId===s?'#000':'#555', border:'1px solid '+(spotId===s?'#00ff88':'#2a2a2a'), padding:'5px 10px', cursor:'pointer', fontSize:10, fontFamily:'JetBrains Mono, monospace', letterSpacing:'0.04em' }}>
-                {s.split('-')[0].toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Divider */}
-          <span style={{ color: '#2a2a2a', fontSize: 16 }}>|</span>
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-            <button onClick={fetchReport} disabled={appStatus==='fetching'}
-              style={{ border:'1px solid #2a2a2a', background:'transparent', color:'#888', padding:'7px 14px', cursor:'pointer', fontSize:11, fontFamily:'JetBrains Mono, monospace', whiteSpace:'nowrap' }}>
-              {appStatus==='fetching'?'...':'READ FREE'}
-            </button>
-            <button onClick={buyReport} disabled={!wallet||appStatus==='buying'}
-              style={{ background: (!wallet||appStatus==='buying')?'#1a1a1a':'#00ff88', color: (!wallet||appStatus==='buying')?'#444':'#000', border:'none', padding:'7px 16px', cursor: (!wallet)?'not-allowed':'pointer', fontSize:11, fontWeight:700, fontFamily:'JetBrains Mono, monospace', whiteSpace:'nowrap' }}>
-              {appStatus==='buying'?'...':'PAY $0.05 USDC'}
-            </button>
-          </div>
-
-          {/* Inline log */}
-          {appLog && (
-            <span style={{ fontSize:11, color: appLog.includes('Error')?'#ff4444':'#555', fontFamily:'JetBrains Mono, monospace', marginLeft: 8 }}>
-              {appLog.length > 40 ? appLog.slice(0,40)+'...' : appLog}
-            </span>
-          )}
-        </div>
-
-        {/* Inline report result strip */}
-        {report && (
-          <div style={{ maxWidth: 1100, margin: '4px auto 0', display: 'flex', gap: 24, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid #111' }}>
-            {[
-              ['SPOT', spotId.toUpperCase()],
-              ['WAVE', (report.waveHeight/10).toFixed(1)+'m'],
-              ['WIND', report.windKnots+'kn'],
-              ['SWELL', report.swellPeriod+'s'],
-              ['SCORE', report.score+'/100'],
-              ['STATUS', report.fresh?'FRESH':'EXPIRED'],
-            ].map(([k,v]) => (
-              <div key={k} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize:10, color:'#333', fontFamily:'JetBrains Mono, monospace', letterSpacing:'0.1em' }}>{k}:</span>
-                <span style={{ fontSize:11, color: k==='STATUS'?(report.fresh?'#00ff88':'#ff4444'):'#f5f5f5', fontFamily:'JetBrains Mono, monospace' }}>{v}</span>
-              </div>
-            ))}
-            <a href={`https://testnet.arcscan.app/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize:10, color:'#333', fontFamily:'JetBrains Mono, monospace', textDecoration:'none', marginLeft:'auto' }}>
-              contract &#8599;
-            </a>
-          </div>
-        )}
-      </div>
-
       {/* NAV */}
       <nav style={navStyle}>
         <div style={{ maxWidth: 1100, margin: '0 auto', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -210,7 +130,7 @@ export default function Home() {
       {/* HERO */}
       <section style={{
         minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '80px 24px 60px', textAlign: 'center', position: 'relative',
+        padding: '120px 24px 80px', textAlign: 'center', position: 'relative',
         backgroundImage: 'linear-gradient(rgba(30,30,30,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(30,30,30,0.5) 1px, transparent 1px)',
         backgroundSize: '40px 40px',
       }}>
@@ -232,12 +152,19 @@ export default function Home() {
           Pay $0.05 USDC per spot report. Local surfers earn crypto for keeping data accurate. No subscriptions, no ads, no middlemen.
         </p>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 80 }}>
-          <a href="#how" style={{ background: '#00ff88', color: '#000', padding: '14px 32px', fontWeight: 700, textDecoration: 'none', fontSize: 14, letterSpacing: '0.08em', fontFamily: 'JetBrains Mono, monospace' }}>
-            HOW IT WORKS &#8594;
-          </a>
-          <a href="https://testnet.arcscan.app" target="_blank" rel="noopener noreferrer"
+          {wallet ? (
+            <a href="#app" style={{ background: '#00ff88', color: '#000', padding: '14px 32px', fontWeight: 700, textDecoration: 'none', fontSize: 14, letterSpacing: '0.08em', fontFamily: 'JetBrains Mono, monospace' }}>
+              GET SPOT REPORT &#8594;
+            </a>
+          ) : (
+            <button onClick={connectWallet} disabled={appStatus==='connecting'}
+              style={{ background: appStatus==='connecting'?'#1a1a1a':'#00ff88', color: appStatus==='connecting'?'#444':'#000', border:'none', padding:'14px 32px', cursor:'pointer', fontSize:14, fontWeight:700, letterSpacing:'0.08em', fontFamily:'JetBrains Mono, monospace' }}>
+              {appStatus==='connecting'?'CONNECTING...':'CONNECT WALLET &#8594;'}
+            </button>
+          )}
+          <a href="https://testnet.arcscan.app/address/0xdbe14257a79354474Ce0e4067ddaDB772130F365" target="_blank" rel="noopener noreferrer"
             style={{ border: '1px solid #1e1e1e', color: '#f5f5f5', padding: '14px 32px', fontWeight: 600, textDecoration: 'none', fontSize: 14, letterSpacing: '0.08em', fontFamily: 'JetBrains Mono, monospace' }}>
-            VIEW ON ARCSCAN &#8599;
+            VIEW CONTRACT &#8599;
           </a>
         </div>
         <div style={{ display: 'flex', gap: 40, flexWrap: 'wrap', justifyContent: 'center', borderTop: '1px solid #1e1e1e', paddingTop: 32, width: '100%', maxWidth: 800 }}>
@@ -335,7 +262,7 @@ export default function Home() {
       </section>
 
       {/* APP — GET REPORT */}
-      <section style={{ padding: '100px 24px', borderTop: '1px solid #1e1e1e', background: '#0d0d0d' }}>
+      <section id="app" style={{ padding: '100px 24px', borderTop: '1px solid #1e1e1e', background: '#0d0d0d' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <div style={{ marginBottom: 48 }}>
             <span style={{ fontSize: 11, color: '#00ff88', letterSpacing: '0.15em', fontFamily: 'JetBrains Mono, monospace' }}>&#9672; LIVE APP</span>
