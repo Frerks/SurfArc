@@ -95,7 +95,42 @@ export default function Home() {
       await tx.wait()
       setAppLog('Paid! Fetching report...')
       await fetchReport()
-    } catch(e: unknown) { setAppLog('Error: ' + (e instanceof Error ? e.message : String(e))); setAppStatus('error') }
+    } catch(e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('0xe6e895f9') || msg.includes('InvalidSpot')) {
+        setAppLog('No report for this spot yet. Submit one first!')
+      } else if (msg.includes('0x69458111') || msg.includes('ReportExpired')) {
+        setAppLog('Report expired (>2h old). Needs a fresh submission.')
+      } else if (msg.includes('0x07a4ced1') || msg.includes('PaymentFailed')) {
+        setAppLog('USDC payment failed. Approve USDC for contract first.')
+      } else {
+        setAppLog('Error: ' + msg.slice(0, 80))
+      }
+      setAppStatus('error')
+    }
+  }
+
+  const submitTestReport = async () => {
+    if (!wallet) { setAppLog('Connect wallet first.'); return }
+    setAppStatus('buying')
+    setAppLog('Submitting test report...')
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const provider = new BrowserProvider((window as any).ethereum)
+      const signer = await provider.getSigner()
+      const submitABI = ["function submitReport(string spotId, string dataHash, uint8 waveHeight, uint8 windKnots, uint8 swellPeriod) external"]
+      const contract = new Contract(CONTRACT_ADDRESS, submitABI, signer)
+      // waveHeight in decimeters (15 = 1.5m), windKnots=12, swellPeriod=10
+      const tx = await contract.submitReport(spotId, 'test-report-hash', 15, 12, 10)
+      setAppLog('Tx sent: ' + tx.hash.slice(0,10) + '...')
+      await tx.wait()
+      setAppLog('Report submitted! Now try READ FREE.')
+      setAppStatus('idle')
+    } catch(e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setAppLog('Submit error: ' + msg.slice(0,80))
+      setAppStatus('error')
+    }
   }
 
   const navStyle: React.CSSProperties = {
@@ -312,11 +347,15 @@ export default function Home() {
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <button onClick={fetchReport} disabled={appStatus==='fetching'}
                   style={{ border:'1px solid #1e1e1e', background:'transparent', color:'#f5f5f5', padding:'12px 24px', cursor:'pointer', fontSize:13, fontFamily:'JetBrains Mono, monospace' }}>
-                  {appStatus==='fetching'?'READING...':'READ FREE (no pay)'}
+                  {appStatus==='fetching'?'READING...':'READ FREE'}
                 </button>
                 <button onClick={buyReport} disabled={!wallet||appStatus==='buying'}
                   style={{ background: (!wallet||appStatus==='buying')?'#1a1a1a':'#00ff88', color: (!wallet||appStatus==='buying')?'#444':'#000', border:'none', padding:'12px 24px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'JetBrains Mono, monospace' }}>
                   {appStatus==='buying'?'SENDING...':'PAY $0.05 USDC'}
+                </button>
+                <button onClick={submitTestReport} disabled={!wallet||appStatus==='buying'}
+                  style={{ border:'1px solid #2a2a2a', background:'transparent', color:'#444', padding:'12px 24px', cursor: (!wallet)?'not-allowed':'pointer', fontSize:11, fontFamily:'JetBrains Mono, monospace' }}>
+                  SUBMIT TEST REPORT
                 </button>
               </div>
             </div>
@@ -324,7 +363,12 @@ export default function Home() {
             {/* Log */}
             {appLog && (
               <div style={{ padding:'12px 16px', background:'#050505', border:'1px solid #111', marginBottom: 16 }}>
-                <span style={{ fontSize:12, color: appLog.includes('Error')?'#ff4444':'#888', fontFamily:'JetBrains Mono, monospace' }}>{appLog}</span>
+                <span style={{ fontSize:12, color: (appLog.includes('Error')||appLog.includes('failed')||appLog.includes('error'))?'#ff4444': appLog.includes('submitted')||appLog.includes('Paid')?'#00ff88':'#888', fontFamily:'JetBrains Mono, monospace' }}>{appLog}</span>
+              </div>
+            )}
+            {!appLog && !report && (
+              <div style={{ padding:'12px 16px', background:'#050505', border:'1px solid #111', marginBottom: 16 }}>
+                <span style={{ fontSize:11, color:'#333', fontFamily:'JetBrains Mono, monospace' }}>{'// No reports in contract yet. Hit SUBMIT TEST REPORT to seed one, then READ FREE.'}</span>
               </div>
             )}
 
