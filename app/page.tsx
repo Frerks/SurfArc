@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
 
 const CONTRACT_ADDRESS = '0xdbe14257a79354474Ce0e4067ddaDB772130F365'
@@ -147,8 +148,11 @@ export default function Home() {
       {/* NAV */}
       <nav style={navStyle}>
         <div style={{ maxWidth: 1100, margin: '0 auto', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', color: '#00ff88' }}>
-            SURF<span style={{ color: '#f5f5f5' }}>ARC</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Image src="/wave-logo.svg" alt="SurfArc" width={28} height={28} />
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', color: '#00ff88' }}>
+              SURF<span style={{ color: '#f5f5f5' }}>ARC</span>
+            </span>
           </span>
           <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
             <a href="#how" style={{ color: '#666', fontSize: 13, textDecoration: 'none', letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace' }}>HOW IT WORKS</a>
@@ -408,8 +412,11 @@ export default function Home() {
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 32 }}>
             <div>
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 700, letterSpacing: '0.05em', color: '#00ff88' }}>
-                SURF<span style={{ color: '#f5f5f5' }}>ARC</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Image src="/wave-logo.svg" alt="SurfArc" width={32} height={32} />
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 18, fontWeight: 700, letterSpacing: '0.05em', color: '#00ff88' }}>
+                  SURF<span style={{ color: '#f5f5f5' }}>ARC</span>
+                </span>
               </span>
               <p style={{ fontSize: 13, color: '#444', marginTop: 8, maxWidth: 280 }}>On-chain surf spot reports. Micropayments for local reporters.</p>
             </div>

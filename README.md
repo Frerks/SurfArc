@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌊 SurfArc
 
-## Getting Started
+**On-chain surf spot reports. $0.05 USDC per query. Reporters earn crypto.**
 
-First, run the development server:
+Live: [surf-arc.vercel.app](https://surf-arc.vercel.app) · Contract: [0xdbe142...](https://testnet.arcscan.app/address/0xdbe14257a79354474Ce0e4067ddaDB772130F365) · Arc Testnet (Chain ID: 5042002)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Why Arc?
+
+Local surf spot data lives in WhatsApp groups. No API, no structure, no incentive to keep it fresh. SurfArc fixes that with a dead-simple micropayment loop:
+
+- **Surfer** pays $0.05 USDC → gets wave/wind/tide report
+- **Reporter** (local surfer) earns 80% of every query for their spot
+- **Validator agent** scores report quality — low quality = no payout
+
+Arc makes this viable. Sub-cent gas fees mean a $0.05 payment actually makes economic sense. On Ethereum mainnet, gas would eat the entire payment. Here it's a rounding error.
+
+## Why This Matters
+
+The model is replicable to anything hyperlocal with perishable data:
+
+- Traffic conditions → reporters earn per accurate update
+- Air quality readings → sensor operators paid per query
+- Fishing reports → boat captains monetize local knowledge
+- Trail conditions → hikers share and earn
+
+SurfArc is the proof of concept. Arc is the infrastructure that makes micropayment data markets real.
+
+## Architecture
+
+```
+User (browser)
+  │
+  ├─ JsonRpcProvider (read free) ──────► Arc Testnet RPC
+  │
+  └─ BrowserProvider (write) ──────────► Wallet (Rabby/MetaMask)
+                                              │
+                                         SurfArc.sol
+                                         0xdbe14257...
+                                              │
+                                    ┌─────────┴─────────┐
+                               Reporter pays         Reporter earns
+                               REPORT_PRICE          80% of fees
+                               (50,000 USDC units)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Contract
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Address:** `0xdbe14257a79354474Ce0e4067ddaDB772130F365`  
+**Network:** Arc Testnet  
+**Compiler:** solc 0.8.35, optimizer 200 runs  
+**USDC:** `0x3600000000000000000000000000000000000000` (6 decimals)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Key functions:
+- `submitReport(spotId, dataHash, waveHeight, windKnots, swellPeriod)` — reporter updates spot
+- `buyReport(spotId)` — surfer pays $0.05 USDC, reporter gets $0.04
+- `isReportFresh(spotId)` — returns false after 2 hours (stale data)
+- `updateScore(spotId, score)` — validator sets quality score 0-100
 
-## Learn More
+## Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Frontend:** Next.js 15, App Router, TypeScript, Tailwind CSS
+- **Web3:** ethers.js v6 (no wagmi, no viem)
+- **Contract:** Solidity 0.8.35
+- **Chain:** Arc Testnet (EVM-compatible L2)
+- **Deploy:** Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run Locally
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+git clone https://github.com/Frerks/SurfArc.git
+cd SurfArc
+npm install
+npm run dev
+```
 
-## Deploy on Vercel
+Open [localhost:3000](http://localhost:3000). Connect Rabby or MetaMask, add Arc Testnet (Chain ID: 5042002, RPC: https://rpc.testnet.arc.network).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built by a Java/Docker backend dev who surfs. The WhatsApp group problem is real.
